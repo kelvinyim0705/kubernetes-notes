@@ -1,0 +1,38 @@
+- name: Simple Playbook Example
+  hosts: k3s-worker
+  become: true  # sudo with -b -K
+  gather_facts: true  # Gather facts about the system
+
+  tasks:
+    - name: Hello World
+      debug:
+        msg: "Hello, World!"
+    
+    - name: Install required packages
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git
+        - vim
+        - httpd
+        - docker
+      register: installed_packages
+    
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true
+      when: ansible_os_family == "RedHat"
+
+    - name: Install K3s node
+      shell: curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars['master-node']['ansible_host'] }}:6443 K3S_TOKEN={{ hostvars['master-node']['node_token'] }} sh -
+      when: ansible_os_family == "RedHat"
+      register: k3s_installation
+
+
+    
+
+        

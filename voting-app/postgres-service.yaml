@@ -1,0 +1,16 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name:  postgres
+  labels:
+    name: postgres-service
+    app: demo-voting-app
+spec:
+  selector:
+    name:  postgres-pod
+    app: demo-voting-app
+  type:  ClusterIP
+  ports:
+  - name:  postgres-service-port
+    port:  5432
+    targetPort:  5432

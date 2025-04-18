@@ -1,0 +1,43 @@
+---
+- name: Deploy NGINX on k3s
+  hosts: fedora
+  tasks:
+    - name: Copy existing NGINX deployment YAML file to the target host
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: "../nginx-test/nginx-deployment.yaml", dest: "/tmp/nginx-deployment.yaml" }
+        - { src: "../nginx-test/nginx-service.yaml", dest: "/tmp/nginx-service.yaml" }
+
+    - name: Apply NGINX deployment using kubectl
+      command: "{{ item }}"
+      with_items:
+        - kubectl apply -f /tmp/nginx-deployment.yaml
+        - kubectl apply -f /tmp/nginx-service.yaml
+      register: kubectl_output
+      ignore_errors: yes  # Ignore errors to continue with the playbook
+
+    - name: Print kubectl output
+      debug:
+        var: kubectl_output.stdout_lines
+    
+    - name: Wait for NGINX deployment to be ready
+      command: kubectl rollout status deployment/nginx-deployment
+      register: rollout_status
+      retries: 5
+      delay: 10
+      until: rollout_status.rc == 0
+
+    - name: Print rollout status
+      debug:
+        var: rollout_status.stdout_lines
+
+    - name: Get NGINX service details
+      command: kubectl get deployment nginx-deployment -o json
+      register: nginx_service_details
+      ignore_errors: yes  # Ignore errors to continue with the playbook
+    
+    - name: Print NGINX service details
+      debug:
+        var: nginx_service_details.stdout_lines

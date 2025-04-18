@@ -1,0 +1,11 @@
+- name: Retrieve K3s node token
+  hosts: fedora
+  tasks:
+    - name: Get K3s node token
+      become: true  # sudo with -B -k
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Display K3s node token
+      debug:
+        msg: "{{ node_token.stdout }}"

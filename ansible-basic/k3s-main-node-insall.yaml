@@ -1,0 +1,39 @@
+---
+- name: Simple Playbook Example
+  hosts: fedora
+  become: true  # sudo with -b -K
+  gather_facts: true  # Gather facts about the system
+
+  tasks:
+    - name: Hello World
+      debug:
+        msg: "Hello, World!"
+    
+    - name: Install required packages
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git
+        - vim
+        - httpd
+        - docker
+      register: installed_packages
+    
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true
+      when: ansible_os_family == "RedHat"
+
+    - name: Install K3s
+      shell: curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+      when: ansible_os_family == "RedHat"
+      register: k3s_installation
+
+
+    
+
+        

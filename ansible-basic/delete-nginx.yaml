@@ -1,0 +1,14 @@
+---
+- name: Delete Nginx Deployment
+  hosts: fedora
+  tasks:
+    - name: Delete Nginx Deployment in Kubernetes
+      shell: "{{ item }}"
+      with_items:
+        - kubectl delete deployment nginx-deployment
+        - kubectl delete service nginx-service
+      register: delete_deployment
+
+    - name: Print delete deployment output
+      debug:
+        var: delete_deployment.stdout_lines
