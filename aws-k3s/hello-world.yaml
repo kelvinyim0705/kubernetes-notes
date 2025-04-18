@@ -1,0 +1,12 @@
+---
+- name: Test SSM Connection
+  hosts: master
+  gather_facts: no
+  tasks:
+    - name: Run simple command
+      raw: echo "Hello from $(hostname)"
+      register: result
+    
+    - name: Show result
+      debug:
+        var: result.stdout

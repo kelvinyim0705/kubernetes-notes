@@ -1,0 +1,82 @@
+---
+- name: Install K3s Server on Master
+  hosts: master
+  become: true
+  tasks:
+    - name: Download K3s install script
+      get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Install K3s server
+      shell: INSTALL_K3S_EXEC="--node-external-ip {{ ansible_host }}" /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready
+      shell: k3s kubectl get nodes
+      register: k3s_ready
+      until: k3s_ready.rc == 0
+      retries: 20
+      delay: 10
+
+    - name: Get K3s token
+      shell: cat /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Store token for workers
+      set_fact:
+        k3s_token: "{{ k3s_token.stdout }}"
+
+- name: Install K3s Agent on Workers
+  hosts: workers
+  become: true
+  tasks:
+    - name: Download K3s install script
+      get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Install K3s agent
+      shell: >
+        K3S_URL=https://{{ hostvars[groups['master'][0]]['private_ip'] }}:6443
+        K3S_TOKEN={{ hostvars[groups['master'][0]]['k3s_token'] }}
+        INSTALL_K3S_EXEC="--node-external-ip {{ ansible_host }}"
+        /tmp/k3s-install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+- name: Get kubeconfig and check cluster status
+  hosts: master
+  become: true
+  tasks:
+    - name: Copy kubeconfig to accessible location
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ubuntu/.kube/config
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Replace localhost with master IP
+      replace:
+        path: /home/ubuntu/.kube/config
+        regexp: 'https://127.0.0.1:6443'
+        replace: 'https://{{ ansible_host }}:6443'
+
+    - name: Fetch kubeconfig
+      fetch:
+        src: /home/ubuntu/.kube/config
+        dest: ./kubeconfig
+        flat: yes
+
+    - name: Get nodes
+      shell: k3s kubectl get nodes
+      register: nodes
+
+    - name: Display nodes
+      debug:
+        var: nodes.stdout_lines
